@@ -1,0 +1,93 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: "DM Sans";
+  src: url("/assets/fonts/DMSans.woff2") format("woff2");
+  font-weight: 300 700;
+  font-display: swap;
+}
+
+@layer base {
+  :root {
+    --radius: 0.75rem;
+
+    /* ── Dark Navy Palette ── */
+    /* Background: deep navy #0B1826 */
+    --background: 0.13 0.034 252;
+    --foreground: 0.97 0.008 240;
+
+    /* Cards: dark slate blue-gray #1B2B3D */
+    --card: 0.21 0.038 248;
+    --card-foreground: 0.97 0.008 240;
+    --popover: 0.19 0.038 248;
+    --popover-foreground: 0.97 0.008 240;
+
+    /* Primary: teal accent #1FC7C2 */
+    --primary: 0.75 0.13 186;
+    --primary-foreground: 0.12 0.03 252;
+
+    /* Secondary: slightly lighter navy */
+    --secondary: 0.24 0.045 248;
+    --secondary-foreground: 0.97 0.008 240;
+
+    /* Muted: muted blue-gray */
+    --muted: 0.22 0.035 248;
+    --muted-foreground: 0.65 0.04 240;
+
+    /* Accent: subtle teal highlight */
+    --accent: 0.26 0.05 248;
+    --accent-foreground: 0.75 0.13 186;
+
+    /* Destructive */
+    --destructive: 0.577 0.245 27.325;
+    --destructive-foreground: 1 0 0;
+
+    /* Border: muted blue-gray #26384A */
+    --border: 0.29 0.04 248;
+    --input: 0.29 0.04 248;
+    --ring: 0.75 0.13 186;
+
+    /* Charts */
+    --chart-1: 0.75 0.13 186;
+    --chart-2: 0.696 0.17 162.48;
+    --chart-3: 0.769 0.188 70.08;
+    --chart-4: 0.627 0.265 303.9;
+    --chart-5: 0.577 0.245 27.325;
+
+    /* Sidebar: slightly lighter dark #111E2C */
+    --sidebar: 0.17 0.038 250;
+    --sidebar-foreground: 0.97 0.008 240;
+    --sidebar-primary: 0.75 0.13 186;
+    --sidebar-primary-foreground: 0.12 0.03 252;
+    --sidebar-accent: 0.24 0.05 248;
+    --sidebar-accent-foreground: 0.75 0.13 186;
+    --sidebar-border: 0.27 0.04 248;
+    --sidebar-ring: 0.75 0.13 186;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: "DM Sans", system-ui, sans-serif;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: oklch(var(--border));
+    border-radius: 99px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: oklch(var(--muted-foreground) / 0.4);
+  }
+}
