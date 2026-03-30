@@ -103,7 +103,7 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
             <Cloud className="w-8 h-8 text-primary-foreground" />
           </div>
           <h1 className="text-3xl font-bold text-foreground tracking-tight">
-            CloudVault
+            Storage King
           </h1>
           <p className="text-sm text-muted-foreground mt-1.5">
             Your private media, secured in the cloud
@@ -176,7 +176,7 @@ export default function AuthScreen({ onAuthenticated }: AuthScreenProps) {
                     Connecting...
                   </>
                 ) : (
-                  <>Sign In to CloudVault</>
+                  <>Sign In to Storage King</>
                 )}
               </Button>
               <p className="text-xs text-muted-foreground text-center">

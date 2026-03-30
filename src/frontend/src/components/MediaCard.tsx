@@ -1,6 +1,14 @@
-import { Archive, File, FileText, Play, Trash2 } from "lucide-react";
+import {
+  Archive,
+  CheckCircle2,
+  Circle,
+  File,
+  FileText,
+  Play,
+  Trash2,
+} from "lucide-react";
 import { motion } from "motion/react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { FileMeta } from "../backend";
 import { FileType } from "../fileTypes";
 
@@ -10,6 +18,10 @@ interface MediaCardProps {
   onClick: () => void;
   onDelete: () => void;
   isDeleting?: boolean;
+  isSelectionMode?: boolean;
+  isSelected?: boolean;
+  onSelect?: () => void;
+  onEnterSelectionMode?: () => void;
 }
 
 function getDocIcon(fileName: string) {
@@ -60,8 +72,13 @@ export default function MediaCard({
   onClick,
   onDelete,
   isDeleting,
+  isSelectionMode = false,
+  isSelected = false,
+  onSelect,
+  onEnterSelectionMode,
 }: MediaCardProps) {
   const [hovered, setHovered] = useState(false);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ft = file.fileType as string;
   const isVideo = ft === FileType.video;
   const isDocument = ft === FileType.document || ft === FileType.other;
@@ -69,22 +86,64 @@ export default function MediaCard({
 
   const docInfo = isDocument ? getDocIcon(file.fileName) : null;
 
+  const startLongPress = () => {
+    if (isSelectionMode) return;
+    longPressTimer.current = setTimeout(() => {
+      onEnterSelectionMode?.();
+    }, 500);
+  };
+
+  const cancelLongPress = () => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  };
+
+  const handleThumbnailClick = () => {
+    if (isSelectionMode) {
+      onSelect?.();
+    } else {
+      onClick();
+    }
+  };
+
+  const handleFooterClick = () => {
+    if (isSelectionMode) {
+      onSelect?.();
+    } else {
+      onClick();
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.94 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ delay: Math.min(index * 0.04, 0.4), duration: 0.22 }}
-      className="relative rounded-xl overflow-hidden border border-border shadow-card group"
+      className={`relative rounded-xl overflow-hidden border shadow-card group transition-all duration-150 ${
+        isSelected ? "border-blue-500 ring-2 ring-blue-500/70" : "border-border"
+      }`}
       onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      onMouseLeave={() => {
+        setHovered(false);
+        cancelLongPress();
+      }}
       data-ocid={`media.item.${index + 1}`}
     >
       {/* Thumbnail */}
       <button
         type="button"
-        className="aspect-square w-full overflow-hidden block cursor-pointer bg-muted"
-        onClick={onClick}
-        aria-label={`View ${file.fileName}`}
+        className="aspect-square w-full overflow-hidden block cursor-pointer bg-muted relative"
+        onClick={handleThumbnailClick}
+        onMouseDown={startLongPress}
+        onMouseUp={cancelLongPress}
+        onTouchStart={startLongPress}
+        onTouchEnd={cancelLongPress}
+        onTouchCancel={cancelLongPress}
+        aria-label={
+          isSelectionMode ? `Select ${file.fileName}` : `View ${file.fileName}`
+        }
       >
         {isDocument && docInfo ? (
           <div className="w-full h-full flex items-center justify-center relative">
@@ -134,10 +193,32 @@ export default function MediaCard({
             loading="lazy"
           />
         )}
+
+        {/* Selection overlay when selected */}
+        {isSelectionMode && isSelected && (
+          <div className="absolute inset-0 bg-blue-500/20 pointer-events-none" />
+        )}
+
+        {/* Checkbox indicator */}
+        {isSelectionMode && (
+          <div className="absolute top-2 left-2 pointer-events-none">
+            {isSelected ? (
+              <CheckCircle2
+                className="w-6 h-6 text-blue-500 drop-shadow-lg"
+                fill="white"
+              />
+            ) : (
+              <Circle
+                className="w-6 h-6 text-white drop-shadow-lg"
+                style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.7))" }}
+              />
+            )}
+          </div>
+        )}
       </button>
 
-      {/* Hover overlay with delete */}
-      {(hovered || isDeleting) && (
+      {/* Hover overlay with delete — hidden in selection mode */}
+      {!isSelectionMode && (hovered || isDeleting) && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -162,7 +243,7 @@ export default function MediaCard({
       <button
         type="button"
         className="px-2.5 py-2 w-full text-left bg-card"
-        onClick={onClick}
+        onClick={handleFooterClick}
       >
         <p className="text-xs font-semibold text-foreground truncate">
           {file.fileName}

@@ -15,8 +15,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  CheckSquare,
   ChevronDown,
   Cloud,
+  Download,
   FileText,
   FolderOpen,
   Grid3x3,
@@ -26,6 +28,7 @@ import {
   Plus,
   Search,
   ShieldCheck,
+  Trash2,
   Video,
   X,
 } from "lucide-react";
@@ -89,6 +92,14 @@ export default function Dashboard({ username, onLogout }: DashboardProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(24);
 
+  // Multi-select state
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedFileNames, setSelectedFileNames] = useState<Set<string>>(
+    new Set(),
+  );
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [isBulkDownloading, setIsBulkDownloading] = useState(false);
+
   const filtered = useMemo(() => {
     return files.filter((f) => {
       const matchesSearch = f.fileName
@@ -118,6 +129,86 @@ export default function Dashboard({ username, onLogout }: DashboardProps) {
       toast.error("Failed to delete file");
     } finally {
       setDeletingFile(null);
+    }
+  };
+
+  // Multi-select handlers
+  const enterSelectionMode = (fileName: string) => {
+    setSelectionMode(true);
+    setSelectedFileNames(new Set([fileName]));
+  };
+
+  const toggleFileSelection = (fileName: string) => {
+    setSelectedFileNames((prev) => {
+      const next = new Set(prev);
+      if (next.has(fileName)) {
+        next.delete(fileName);
+      } else {
+        next.add(fileName);
+      }
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    setSelectedFileNames(new Set(filtered.map((f) => f.fileName)));
+  };
+
+  const clearSelection = () => {
+    setSelectionMode(false);
+    setSelectedFileNames(new Set());
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedFileNames.size === 0) return;
+    const confirmed = window.confirm(
+      `Delete ${selectedFileNames.size} file${selectedFileNames.size !== 1 ? "s" : ""}? This cannot be undone.`,
+    );
+    if (!confirmed) return;
+
+    setIsBulkDeleting(true);
+    try {
+      await Promise.all(
+        Array.from(selectedFileNames).map((name) =>
+          deleteMutation.mutateAsync(name),
+        ),
+      );
+      toast.success(
+        `${selectedFileNames.size} file${selectedFileNames.size !== 1 ? "s" : ""} deleted`,
+      );
+      clearSelection();
+    } catch {
+      toast.error("Some files could not be deleted");
+    } finally {
+      setIsBulkDeleting(false);
+    }
+  };
+
+  const handleBulkDownload = async () => {
+    if (selectedFileNames.size === 0) return;
+    setIsBulkDownloading(true);
+    try {
+      const selectedFiles = files.filter((f) =>
+        selectedFileNames.has(f.fileName),
+      );
+      for (const file of selectedFiles) {
+        const url = file.blob.getDirectURL();
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = file.fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        // Small delay between downloads
+        await new Promise((resolve) => setTimeout(resolve, 150));
+      }
+      toast.success(
+        `Downloading ${selectedFiles.length} file${selectedFiles.length !== 1 ? "s" : ""}`,
+      );
+    } catch {
+      toast.error("Download failed");
+    } finally {
+      setIsBulkDownloading(false);
     }
   };
 
@@ -159,7 +250,7 @@ export default function Dashboard({ username, onLogout }: DashboardProps) {
                 <Cloud className="w-4 h-4 text-primary-foreground" />
               </div>
               <span className="font-bold text-base text-foreground tracking-tight hidden sm:block">
-                CloudVault
+                Storage King
               </span>
             </div>
           </div>
@@ -333,7 +424,7 @@ export default function Dashboard({ username, onLogout }: DashboardProps) {
                       <Cloud className="w-4 h-4 text-primary-foreground" />
                     </div>
                     <span className="font-bold text-foreground">
-                      CloudVault
+                      Storage King
                     </span>
                   </div>
                   <button
@@ -384,7 +475,7 @@ export default function Dashboard({ username, onLogout }: DashboardProps) {
         </AnimatePresence>
 
         {/* ── Main Content ── */}
-        <main className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-6">
+        <main className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-6 pb-28">
           {/* Mobile search */}
           <div className="sm:hidden relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -442,28 +533,60 @@ export default function Dashboard({ username, onLogout }: DashboardProps) {
           </motion.div>
 
           {/* Section header */}
-          <div className="flex items-center justify-between">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
-              Recent Uploads
-            </p>
-            {/* Filter pills (mobile) */}
-            <div className="flex md:hidden items-center gap-1 flex-wrap justify-end">
-              {SIDEBAR_ITEMS.map((item) => (
-                <button
-                  type="button"
-                  key={item.id}
-                  onClick={() => setFilter(item.id)}
-                  className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-                    filter === item.id
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground hover:text-foreground"
-                  }`}
-                  data-ocid={`filter.${item.id}.tab`}
-                >
-                  {item.id === "all" ? "All" : item.label}
-                </button>
-              ))}
-            </div>
+          <div className="flex items-center justify-between gap-2">
+            {selectionMode ? (
+              <>
+                <div className="flex items-center gap-2">
+                  <CheckSquare className="w-4 h-4 text-blue-400" />
+                  <span className="text-sm font-semibold text-foreground">
+                    {selectedFileNames.size} selected
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={selectAll}
+                    className="text-xs font-medium text-blue-400 hover:text-blue-300 transition-colors px-2 py-1 rounded hover:bg-accent"
+                    data-ocid="selection.select_all.button"
+                  >
+                    Select All ({filtered.length})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={clearSelection}
+                    className="p-1 rounded hover:bg-accent transition-colors"
+                    aria-label="Exit selection mode"
+                    data-ocid="selection.cancel.button"
+                  >
+                    <X className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+                  Recent Uploads
+                </p>
+                {/* Filter pills (mobile) */}
+                <div className="flex md:hidden items-center gap-1 flex-wrap justify-end">
+                  {SIDEBAR_ITEMS.map((item) => (
+                    <button
+                      type="button"
+                      key={item.id}
+                      onClick={() => setFilter(item.id)}
+                      className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                        filter === item.id
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-muted-foreground hover:text-foreground"
+                      }`}
+                      data-ocid={`filter.${item.id}.tab`}
+                    >
+                      {item.id === "all" ? "All" : item.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
 
           {/* Media Grid */}
@@ -517,9 +640,17 @@ export default function Dashboard({ username, onLogout }: DashboardProps) {
                     key={file.fileName}
                     file={file}
                     index={index}
-                    onClick={() => setSelectedFile(file)}
+                    onClick={() => {
+                      if (!selectionMode) setSelectedFile(file);
+                    }}
                     onDelete={() => handleDelete(file.fileName)}
                     isDeleting={deletingFile === file.fileName}
+                    isSelectionMode={selectionMode}
+                    isSelected={selectedFileNames.has(file.fileName)}
+                    onSelect={() => toggleFileSelection(file.fileName)}
+                    onEnterSelectionMode={() =>
+                      enterSelectionMode(file.fileName)
+                    }
                   />
                 ))}
               </div>
@@ -554,6 +685,59 @@ export default function Dashboard({ username, onLogout }: DashboardProps) {
           </footer>
         </main>
       </div>
+
+      {/* ── Bulk Action Bar ── */}
+      <AnimatePresence>
+        {selectionMode && selectedFileNames.size > 0 && (
+          <motion.div
+            initial={{ y: 80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 80, opacity: 0 }}
+            transition={{ type: "spring", stiffness: 350, damping: 30 }}
+            className="fixed bottom-0 left-0 right-0 z-50 border-t border-border"
+            style={{ background: "oklch(0.15 0.035 250)" }}
+            data-ocid="selection.bulk_action.panel"
+          >
+            <div className="px-4 py-3 pb-safe flex items-center gap-3">
+              <span className="text-sm font-semibold text-foreground flex-1">
+                {selectedFileNames.size} file
+                {selectedFileNames.size !== 1 ? "s" : ""} selected
+              </span>
+              <Button
+                size="sm"
+                variant="secondary"
+                className="gap-1.5"
+                onClick={handleBulkDownload}
+                disabled={isBulkDownloading || selectedFileNames.size === 0}
+                data-ocid="selection.download.button"
+              >
+                <Download className="w-4 h-4" />
+                <span className="hidden sm:inline">Download</span>
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                className="gap-1.5"
+                onClick={handleBulkDelete}
+                disabled={isBulkDeleting || selectedFileNames.size === 0}
+                data-ocid="selection.delete.button"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span className="hidden sm:inline">Delete</span>
+              </Button>
+              <button
+                type="button"
+                onClick={clearSelection}
+                className="p-1.5 rounded-lg hover:bg-accent transition-colors"
+                aria-label="Cancel selection"
+                data-ocid="selection.bulk_cancel.button"
+              >
+                <X className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Upload Modal */}
       <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>

@@ -69,7 +69,7 @@ export default function App() {
           <Cloud className="w-6 h-6 text-primary-foreground" />
         </div>
         <Loader2 className="w-5 h-5 text-primary animate-spin" />
-        <p className="text-sm text-muted-foreground">Loading CloudVault...</p>
+        <p className="text-sm text-muted-foreground">Loading Storage King...</p>
       </div>
     );
   }

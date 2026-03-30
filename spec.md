@@ -1,35 +1,34 @@
-# CloudVault – Full Document & File Support
+# Storage King
 
 ## Current State
-CloudVault supports user auth (username/password), per-user file storage, upload, gallery grid, and file detail view. Currently only `image` and `video` FileTypes are supported. UploadDropzone only accepts `image/*,video/*`. MediaCard only renders images/videos. MediaDetailModal only previews images/videos.
+- Dashboard shows a media grid via `MediaCard` components
+- Each `MediaCard` has an individual delete button on hover
+- No multi-select functionality exists
+- `Dashboard.tsx` manages file listing, filtering, deletion, and upload
 
 ## Requested Changes (Diff)
 
 ### Add
-- `document` and `other` variants to `FileType` enum in Motoko backend
-- Support for PDF, DOC, DOCX, TXT, ZIP file uploads
-- File type icons for documents and other files in MediaCard
-- PDF inline preview (iframe) in MediaDetailModal
-- Document download button for non-previewable files
-- "Documents & Files" filter tab in Dashboard sidebar and mobile pills
-- File rename functionality (optional, frontend only via rename modal)
-- Dashboard section labeling: Photos & Videos / Documents & Files
+- Multi-select mode for the media gallery
+- Long-press (500ms) on any thumbnail enters selection mode
+- Checkboxes appear on all thumbnails when in selection mode
+- Tap/click to select/deselect individual files in selection mode
+- "Select All" button appears in toolbar when in selection mode
+- Bottom action bar appears when files are selected: shows count, Delete and Download buttons
+- Cancel/exit selection mode button
 
 ### Modify
-- `FileType` enum: add `#document` and `#other` variants
-- `UploadDropzone`: accept all supported file types, detect type correctly
-- `useUploadFile` hook: map MIME types to new FileType variants
-- `MediaCard`: render document icons (PDF, DOC, TXT, ZIP) with colored badge
-- `MediaDetailModal`: handle document preview (PDF iframe, download for others)
-- `Dashboard`: update filter type and sidebar items to include documents
+- `MediaCard` component: accept `isSelectionMode`, `isSelected`, `onSelect` props; show checkbox overlay when in selection mode
+- `Dashboard.tsx`: manage selection state (`selectionMode`, `selectedFileNames` Set), handle bulk delete and bulk download
 
 ### Remove
-- Nothing
+- Nothing removed
 
 ## Implementation Plan
-1. Update `main.mo` FileType to add `#document` and `#other`
-2. Update `useQueries.ts` uploadFile to detect document/other MIME types
-3. Update `UploadDropzone` to accept all file types and display correct icons
-4. Update `MediaCard` to render file-type icons (FileText, Archive, etc.) for documents/other
-5. Update `MediaDetailModal` to show PDF iframe preview or download link for docs
-6. Update `Dashboard` filter to add `documents` tab; update sidebar, mobile pills, empty state messaging
+1. Update `MediaCard` to support selection mode with checkbox overlay and visual selected state
+2. Add selection state management in `Dashboard` (`selectionMode: boolean`, `selectedFileNames: Set<string>`)
+3. Add long-press handler in `MediaCard` to trigger entering selection mode (callback to parent)
+4. Add "Select All" / count label in section header when in selection mode
+5. Add sticky bottom action bar with file count, Delete All Selected, Download All Selected, and Cancel buttons
+6. Bulk delete: iterate selectedFileNames and call deleteFile for each
+7. Bulk download: iterate selectedFileNames and trigger file download for each via blob URL
